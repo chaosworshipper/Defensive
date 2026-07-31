@@ -111,6 +111,7 @@ class RubikaBot:
             "updates": ["Message"]
         }
         result = await self._request("getUpdates", data)
+        logger.debug(f"getUpdates response: {result}")
         updates = result.get("updates", [])
         if updates:
             last_id = updates[-1].get("update_id", 0)
@@ -308,6 +309,8 @@ async def handle_audio(bot: RubikaBot, chat_id: str, url: str):
 
 async def process_update(bot: RubikaBot, update: dict):
     """Process a single update."""
+    logger.info(f"Raw update: {json.dumps(update, indent=2)}")
+
     update_type = update.get("type", "")
 
     if update_type != "Message":
@@ -367,12 +370,11 @@ async def run_bot(token: str):
 
     # Verify bot
     me = await bot.get_me()
-    logger.info(f"getMe response: {me}")
     if me.get("status") == "OK":
-        # Try different response formats
-        bot_info = me.get("bot") or me.get("data") or me.get("result") or {}
-        name = bot_info.get("first_name") or bot_info.get("name") or "Unknown"
-        username = bot_info.get("username") or bot_info.get("bot_username") or "unknown"
+        data = me.get("data", {})
+        bot_info = data.get("bot", {})
+        name = bot_info.get("bot_title", "Unknown")
+        username = bot_info.get("username", "unknown")
         logger.info(f"Bot started: @{username} ({name})")
     else:
         logger.error(f"Failed to verify bot: {me}")
@@ -382,6 +384,8 @@ async def run_bot(token: str):
     try:
         while True:
             updates = await bot.get_updates()
+            if updates:
+                logger.info(f"Received {len(updates)} updates")
             for update in updates:
                 asyncio.create_task(process_update(bot, update))
             await asyncio.sleep(0.5)
