@@ -369,28 +369,38 @@ async def run_bot(token: str):
     await bot.start()
 
     # Verify bot
-    me = await bot.get_me()
-    if me.get("status") == "OK":
-        data = me.get("data", {})
-        bot_info = data.get("bot", {})
-        name = bot_info.get("bot_title", "Unknown")
-        username = bot_info.get("username", "unknown")
-        logger.info(f"Bot started: @{username} ({name})")
-    else:
-        logger.error(f"Failed to verify bot: {me}")
+    try:
+        me = await bot.get_me()
+        logger.info(f"getMe response: {me}")
+        if me.get("status") == "OK":
+            data = me.get("data", {})
+            bot_info = data.get("bot", {})
+            name = bot_info.get("bot_title", "Unknown")
+            username = bot_info.get("username", "unknown")
+            logger.info(f"Bot started: @{username} ({name})")
+        else:
+            logger.error(f"Failed to verify bot: {me}")
+            return
+    except Exception as e:
+        logger.error(f"Error verifying bot: {e}")
         return
 
     # Poll for updates
     try:
         while True:
-            updates = await bot.get_updates()
-            if updates:
-                logger.info(f"Received {len(updates)} updates")
-            for update in updates:
-                asyncio.create_task(process_update(bot, update))
+            try:
+                updates = await bot.get_updates()
+                if updates:
+                    logger.info(f"Received {len(updates)} updates")
+                for update in updates:
+                    asyncio.create_task(process_update(bot, update))
+            except Exception as e:
+                logger.error(f"Error getting updates: {e}")
             await asyncio.sleep(0.5)
     except KeyboardInterrupt:
         logger.info("Bot stopped.")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
     finally:
         await bot.close()
 
